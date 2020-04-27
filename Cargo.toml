@@ -1,0 +1,14 @@
+[package]
+name = "press-detector"
+version = "0.1.0"
+authors = ["Danilo Bargen <mail@dbrgn.ch>"]
+documentation = "https://docs.rs/press-detector"
+description = "A simple no-std input pin debouncer to detect rising edges with minimal RAM requirements."
+readme = "README.md"
+repository = "https://github.com/dbrgn/press-detector/"
+license = "MIT OR Apache-2.0"
+keywords = ["debouncer", "no-std", "embedded-hal"]
+edition = "2018"
+
+[dependencies]
+doc-comment = "0.3"
