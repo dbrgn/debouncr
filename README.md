@@ -1,5 +1,6 @@
 # Simple Debounce
 
+[![Build status][workflow-badge]][workflow]
 [![Crates.io Version][crates-io-badge]][crates-io]
 [![Crates.io Downloads][crates-io-download-badge]][crates-io-download]
 ![No Std][no-std-badge]
@@ -32,6 +33,8 @@ be dual licensed as above, without any additional terms or conditions.
 
 
 <!-- Badges -->
+[workflow]: https://github.com/dbrgn/debouncr/actions?query=workflow%3ACI
+[workflow-badge]: https://img.shields.io/github/workflow/status/dbrgn/debouncr/CI/master
 [crates-io]: https://crates.io/crates/debouncr
 [crates-io-badge]: https://img.shields.io/crates/v/debouncr.svg?maxAge=3600
 [crates-io-download]: https://crates.io/crates/debouncr
