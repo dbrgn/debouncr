@@ -142,6 +142,15 @@ pub struct Debouncer<S, M> {
     mask: core::marker::PhantomData<M>,
 }
 
+/// Rising or falling edge.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Edge {
+    /// A rising edge
+    Rising,
+    /// A falling edge
+    Falling,
+}
+
 macro_rules! impl_logic {
     ($T:ty, $count:expr, $M:ident, $name:ident, $mask:expr) => {
         doc_comment! {
@@ -175,19 +184,23 @@ macro_rules! impl_logic {
 
         impl Debouncer<$T, $M> {
             /// Update the state.
-            pub fn update(&mut self, pressed: bool) -> bool {
+            pub fn update(&mut self, pressed: bool) -> Option<Edge> {
                 // If all bits are already set and there was no change,
                 // we can immediately return false since we're only interested
                 // in the rising edge.
                 if self.state == $mask && pressed {
-                    return false;
+                    return None;
                 }
 
                 // Update state by shifting in the press state & masking
                 self.state = ((self.state << 1) | (pressed as $T)) & $mask;
 
                 // Return whether all masked bits are set now
-                self.state == $mask
+                if self.state == $mask {
+                    Some(Edge::Rising)
+                } else {
+                    None
+                }
             }
 
             /// Return `true` if the debounced state is logical high.
@@ -230,18 +243,18 @@ mod tests {
         assert!(debouncer.is_low());
 
         // Three pressed updates required
-        assert_eq!(debouncer.update(true), false);
-        assert_eq!(debouncer.update(true), false);
-        assert_eq!(debouncer.update(true), true);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
 
         // Further presses do not indicate a rising edge anymore
-        assert_eq!(debouncer.update(true), false);
+        assert_eq!(debouncer.update(true), None);
 
         // A depressed state resets counting
-        assert_eq!(debouncer.update(false), false);
-        assert_eq!(debouncer.update(true), false);
-        assert_eq!(debouncer.update(true), false);
-        assert_eq!(debouncer.update(true), true);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
     }
 
     #[test]
@@ -250,12 +263,12 @@ mod tests {
         let mut debouncer: Debouncer<u16, Repeat16> = debounce_16();
         assert!(debouncer.is_low());
         for _ in 0..15 {
-            assert_eq!(debouncer.update(true), false);
+            assert_eq!(debouncer.update(true), None);
             assert!(!debouncer.is_high());
         }
-        assert_eq!(debouncer.update(true), true);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
         assert!(debouncer.is_high());
-        assert_eq!(debouncer.update(true), false);
+        assert_eq!(debouncer.update(true), None);
         assert!(debouncer.is_high());
     }
 
@@ -273,18 +286,18 @@ mod tests {
 
         // A pressed update causes neither low nor high state
         for _ in 0..7 {
-            assert!(!debouncer.update(true));
+            assert!(debouncer.update(true).is_none());
             assert!(!debouncer.is_low());
             assert!(!debouncer.is_high());
         }
 
         // Once complete, the state is high
-        assert!(debouncer.update(true));
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
         assert!(!debouncer.is_low());
         assert!(debouncer.is_high());
 
         // Consecutive pressed updates don't trigger an edge but are still high
-        assert!(!debouncer.update(true));
+        assert!(debouncer.update(true).is_none());
         assert!(!debouncer.is_low());
         assert!(debouncer.is_high());
     }
