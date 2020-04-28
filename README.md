@@ -4,11 +4,10 @@
 [![Crates.io Downloads][crates-io-download-badge]][crates-io-download]
 ![No Std][no-std-badge]
 
-A simple `no_std` input debouncer that uses integer bit shifting to debounce
-inputs. While the algorithm can currently only detect press events (rising
-edges) and not release events (falling edges), it only requires 1 byte of RAM
-for detecting up to 8 consecutive high states or 2 bytes of RAM for detecting
-up to 16 consecutive high states.
+A simple and efficient `no_std` input debouncer that uses integer bit shifting
+to debounce inputs. The algorithm can detect rising and falling edges and only
+requires 1 byte of RAM for detecting up to 8 consecutive high/low states or 2
+bytes of RAM for detecting up to 16 consecutive high/low states.
 
 The algorithm is based on the [Ganssle Guide to
 Debouncing](http://www.ganssle.com/debouncing-pt2.htm) (section "An

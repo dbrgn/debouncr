@@ -1,10 +1,10 @@
 //! # Debouncr
 //!
-//! A simple `no_std` input debouncer that uses integer bit shifting to
-//! debounce inputs. While the algorithm can currently only detect press events
-//! (rising edges) and not release events (falling edges), it only requires 1
-//! byte of RAM for detecting up to 8 consecutive high states or 2 bytes of RAM
-//! for detecting up to 16 consecutive high states.
+//! A simple and efficient `no_std` input debouncer that uses integer bit
+//! shifting to debounce inputs. The algorithm can detect rising and falling
+//! edges and only requires 1 byte of RAM for detecting up to 8 consecutive
+//! high/low states or 2 bytes of RAM for detecting up to 16 consecutive
+//! high/low states.
 //!
 //! The algorithm is based on the [Ganssle Guide to
 //! Debouncing](http://www.ganssle.com/debouncing-pt2.htm) (section "An
@@ -185,19 +185,23 @@ macro_rules! impl_logic {
         impl Debouncer<$T, $M> {
             /// Update the state.
             pub fn update(&mut self, pressed: bool) -> Option<Edge> {
-                // If all bits are already set and there was no change,
-                // we can immediately return false since we're only interested
-                // in the rising edge.
+                // If all bits are already 1 or 0 and there was no change,
+                // we can immediately return.
                 if self.state == $mask && pressed {
+                    return None;
+                }
+                if self.state == 0 && !pressed {
                     return None;
                 }
 
                 // Update state by shifting in the press state & masking
                 self.state = ((self.state << 1) | (pressed as $T)) & $mask;
 
-                // Return whether all masked bits are set now
+                // Query updated value
                 if self.state == $mask {
                     Some(Edge::Rising)
+                } else if self.state == 0 {
+                    Some(Edge::Falling)
                 } else {
                     None
                 }
@@ -237,7 +241,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_debounce_3() {
+    fn test_rising_edge() {
         // Initially not pressed
         let mut debouncer: Debouncer<u8, Repeat3> = debounce_3();
         assert!(debouncer.is_low());
@@ -255,6 +259,25 @@ mod tests {
         assert_eq!(debouncer.update(true), None);
         assert_eq!(debouncer.update(true), None);
         assert_eq!(debouncer.update(true), Some(Edge::Rising));
+    }
+
+    #[test]
+    fn test_falling_edge() {
+        // Initially not pressed
+        let mut debouncer: Debouncer<u8, Repeat3> = debounce_3();
+        assert!(debouncer.is_low());
+
+        // A single non-pressed update does not trigger
+        assert_eq!(debouncer.update(false), None);
+        assert!(debouncer.is_low());
+
+        // Trigger a falling edge
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+        assert_eq!(debouncer.update(false), None);
+        assert!(debouncer.is_low());
     }
 
     #[test]
