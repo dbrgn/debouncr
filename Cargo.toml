@@ -1,11 +1,11 @@
 [package]
 name = "debouncr"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
-documentation = "https://docs.rs/press-detector"
+documentation = "https://docs.rs/debouncr"
 description = "A simple no-std input debouncer to detect rising and falling edges with minimal RAM requirements."
 readme = "README.md"
-repository = "https://github.com/dbrgn/press-detector/"
+repository = "https://github.com/dbrgn/debouncr/"
 license = "MIT OR Apache-2.0"
 keywords = ["debouncer", "no-std", "embedded-hal"]
 edition = "2018"
