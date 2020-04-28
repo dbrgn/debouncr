@@ -1,10 +1,20 @@
-# press-detector
+# Simple Debounce
 
 [![Crates.io Version][crates-io-badge]][crates-io]
 [![Crates.io Downloads][crates-io-download-badge]][crates-io-download]
 ![No Std][no-std-badge]
 
-Docs: https://docs.rs/press-detector
+A simple `no_std` input debouncer that uses integer bit shifting to debounce
+inputs. While the algorithm can currently only detect press events (rising
+edges) and not release events (falling edges), it only requires 1 byte of RAM
+for detecting up to 8 consecutive high states or 2 bytes of RAM for detecting
+up to 16 consecutive high states.
+
+The algorithm is based on the [Ganssle Guide to
+Debouncing](http://www.ganssle.com/debouncing-pt2.htm) (section "An
+Alternative").
+
+Docs: https://docs.rs/debouncr
 
 ## License
 
@@ -23,8 +33,8 @@ be dual licensed as above, without any additional terms or conditions.
 
 
 <!-- Badges -->
-[crates-io]: https://crates.io/crates/press-detector
-[crates-io-badge]: https://img.shields.io/crates/v/press-detector.svg?maxAge=3600
-[crates-io-download]: https://crates.io/crates/press-detector
-[crates-io-download-badge]: https://img.shields.io/crates/d/press-detector.svg?maxAge=3600
+[crates-io]: https://crates.io/crates/debouncr
+[crates-io-badge]: https://img.shields.io/crates/v/debouncr.svg?maxAge=3600
+[crates-io-download]: https://crates.io/crates/debouncr
+[crates-io-download-badge]: https://img.shields.io/crates/d/debouncr.svg?maxAge=3600
 [no-std-badge]: https://img.shields.io/badge/no__std-yes-blue

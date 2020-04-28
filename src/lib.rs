@@ -1,6 +1,6 @@
-//! # Press Detector
+//! # Debouncr
 //!
-//! A simple input pin debouncing wrapper that uses integer bit shifting to
+//! A simple `no_std` input debouncer that uses integer bit shifting to
 //! debounce inputs. While the algorithm can currently only detect press events
 //! (rising edges) and not release events (falling edges), it only requires 1
 //! byte of RAM for detecting up to 8 consecutive high states or 2 bytes of RAM
@@ -20,7 +20,7 @@
 //! event will happen after 20 ms.
 //!
 //! ```rust
-//! use simple_debouncer::{Debouncer, debounce_4};
+//! use debouncr::{Debouncer, debounce_4};
 //! let mut debouncer = debounce_4(); // Type: Debouncer<u8, Repeat4>
 //! ```
 //! 
@@ -30,7 +30,7 @@
 //! internal state.
 //!
 //! ```rust
-//! # use simple_debouncer::{Debouncer, debounce_4};
+//! # use debouncr::{Debouncer, debounce_4};
 //! # let mut debouncer = debounce_4();
 //! # fn poll_button() -> bool { true };
 //! let is_pressed = poll_button();
@@ -46,7 +46,7 @@
 //! recent updates were pressed, then the debounced state will be high.
 //!
 //! ```rust
-//! # use simple_debouncer::{Debouncer, debounce_3};
+//! # use debouncr::{Debouncer, debounce_3};
 //! let mut debouncer = debounce_3();
 //!
 //! // Initially low
@@ -70,7 +70,7 @@
 //! register a resource and a timer.
 //!
 //! ```ignore
-//! use simple_debouncer::{Debouncer, debounce_12, Repeat12};
+//! use debouncr::{Debouncer, debounce_12, Repeat12};
 //!
 //! #[app(..., monotonic = rtfm::cyccnt::CYCCNT)]
 //! const APP: () = {
