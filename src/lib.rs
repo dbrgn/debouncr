@@ -137,6 +137,7 @@ use doc_comment::doc_comment;
 ///
 /// To create an instance, use the appropriate `debounce_X` function (where `X`
 /// is the number of required consecutive logical-high states).
+#[repr(transparent)]
 pub struct Debouncer<S, M> {
     state: S,
     mask: core::marker::PhantomData<M>,
@@ -323,5 +324,14 @@ mod tests {
         assert!(debouncer.update(true).is_none());
         assert!(!debouncer.is_low());
         assert!(debouncer.is_high());
+    }
+
+    /// Ensure the promised low RAM consumption.
+    #[test]
+    fn test_ram_consumption() {
+        assert_eq!(std::mem::size_of_val(&debounce_2()), 1);
+        assert_eq!(std::mem::size_of_val(&debounce_8()), 1);
+        assert_eq!(std::mem::size_of_val(&debounce_9()), 2);
+        assert_eq!(std::mem::size_of_val(&debounce_16()), 2);
     }
 }
