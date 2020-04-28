@@ -30,14 +30,16 @@
 //! internal state.
 //!
 //! ```rust
-//! # use debouncr::{Debouncer, debounce_4};
-//! # let mut debouncer = debounce_4();
+//! # use debouncr::{Debouncer, debounce_3, Edge};
+//! let mut debouncer = debounce_3();
 //! # fn poll_button() -> bool { true };
-//! let is_pressed = poll_button();
-//! let rising_edge_detected = debouncer.update(is_pressed);
+//! assert_eq!(debouncer.update(poll_button()), None);
+//! assert_eq!(debouncer.update(poll_button()), None);
+//! assert_eq!(debouncer.update(poll_button()), Some(Edge::Rising));
 //! ````
 //!
-//! The `update` function will only return `true` on a rising edge.
+//! The `update` function will return a rising/falling edge, or `None` if the
+//! input is still bouncing.
 //!
 //! ### Query debounced state
 //!
@@ -70,7 +72,7 @@
 //! register a resource and a timer.
 //!
 //! ```ignore
-//! use debouncr::{Debouncer, debounce_12, Repeat12};
+//! use debouncr::{Debouncer, debounce_12, Edge, Repeat12};
 //!
 //! #[app(..., monotonic = rtfm::cyccnt::CYCCNT)]
 //! const APP: () = {
@@ -90,14 +92,9 @@
 //!     }
 //!
 //!     /// Regularly called task that polls the buttons and debounces them.
-//!     ///
-//!     /// The handlers are only called for a rising edge with 12 consecutive high
-//!     /// pin inputs. This means that if the interrupt is scheduled every 1 ms
-//!     /// and the input pin becomes high, the task will fire after 12 ms. Every
-//!     /// low input will reset the whole state though.
 //!     #[task(
 //!         resources = [button, button_state],
-//!         spawn = [button_pressed],
+//!         spawn = [button_pressed, button_released],
 //!         schedule = [poll_button],
 //!     )]
 //!     fn poll_button(ctx: poll_button::Context) {
@@ -105,11 +102,13 @@
 //!         let pressed: bool = ctx.resources.button.is_low().unwrap();
 //!
 //!         // Update state
-//!         let rising_edge = ctx.resources.button_state.update(pressed);
+//!         let edge = ctx.resources.button_state.update(pressed);
 //!
 //!         // Dispatch event
-//!         if rising_edge {
+//!         if edge == Some(Edge::Rising) {
 //!             ctx.spawn.button_pressed().unwrap();
+//!         } else if edge == Some(Edge::Falling) {
+//!             ctx.spawn.button_released().unwrap();
 //!         }
 //!
 //!         // Re-schedule the timer interrupt
@@ -122,6 +121,12 @@
 //!     #[task]
 //!     fn button_pressed(ctx: button_pressed::Context) {
 //!         // Button was pressed, handle event somehow
+//!     }
+//!
+//!     /// The button was released.
+//!     #[task]
+//!     fn button_released(ctx: button_pressed::Context) {
+//!         // Button was released, handle event somehow
 //!     }
 //!
 //! };
