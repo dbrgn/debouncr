@@ -126,6 +126,7 @@
 //!
 //! };
 //! ```
+#![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code, missing_docs)]
 
 use doc_comment::doc_comment;
