@@ -1,4 +1,4 @@
-# Simple Debounce
+# Debouncr
 
 [![Build status][workflow-badge]][workflow]
 [![Crates.io Version][crates-io-badge]][crates-io]
