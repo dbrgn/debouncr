@@ -66,15 +66,15 @@
 //! assert!(debouncer.is_high());
 //! ```
 //!
-//! ## Example: RTFM
+//! ## Example: RTIC
 //!
-//! If you want to debounce a pin in an [RTFM](https://rtfm.rs/) project,
+//! If you want to debounce a pin in an [RTIC](https://rtic.rs/) project,
 //! register a resource and a timer.
 //!
 //! ```ignore
 //! use debouncr::{Debouncer, debounce_12, Edge, Repeat12};
 //!
-//! #[app(..., monotonic = rtfm::cyccnt::CYCCNT)]
+//! #[app(..., monotonic = rtic::cyccnt::CYCCNT)]
 //! const APP: () = {
 //!     struct Resources {
 //!         button: gpioa::PA11<Input<PullUp>>,
