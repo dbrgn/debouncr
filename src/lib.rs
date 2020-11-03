@@ -165,6 +165,20 @@
 //!
 //! };
 //! ```
+//!
+//! ## Memory Consumption
+//!
+//! Memory size of a single debouncer:
+//!
+//! |Debouncer|Repetitions|Bytes|
+//! |--|--|--|
+//! |[`Debouncer`]|2..8|1|
+//! |[`DebouncerStateful`]|2..8|2|
+//! |[`Debouncer`]|9..16|2|
+//! |[`DebouncerStateful`]|9..16|4|
+//!
+//! [`Debouncer`]: struct.Debouncer.html
+//! [`DebouncerStateful`]: struct.DebouncerStateful.html
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code, missing_docs)]
 
@@ -424,9 +438,14 @@ mod tests {
     /// Ensure the promised low RAM consumption.
     #[test]
     fn test_ram_consumption() {
+        // Regular debouncers
         assert_eq!(std::mem::size_of_val(&debounce_2()), 1);
         assert_eq!(std::mem::size_of_val(&debounce_8()), 1);
         assert_eq!(std::mem::size_of_val(&debounce_9()), 2);
         assert_eq!(std::mem::size_of_val(&debounce_16()), 2);
+
+        // Stateful debouncers
+        assert_eq!(std::mem::size_of_val(&debounce_stateful_8()), 2);
+        assert_eq!(std::mem::size_of_val(&debounce_stateful_9()), 4);
     }
 }
