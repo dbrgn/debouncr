@@ -1,6 +1,6 @@
 [package]
 name = "debouncr"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 documentation = "https://docs.rs/debouncr"
 description = "A simple no-std input debouncer to detect rising and falling edges with minimal RAM requirements."

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## 0.2.0 - 2020-11-03
+
+By default, the debouncer will report any change from "bouncing" to "stable
+high/low" as an edge. If instead you want to detect only changes from a stable
+state to the opposite stable state, use the new stateful debouncer instead.
+
+Additionally, the debouncer construction function now allows specifying the
+initial state.
+
+- [add] Implement stateful debouncing (#3)
+- [add] Allow specifying initial state (#5)
+
 ## 0.1.3 - 2020-08-20
 
 - [fix] Docs-only update
