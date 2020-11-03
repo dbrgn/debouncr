@@ -19,14 +19,17 @@
 //!
 //! ### Instantiate
 //!
-//! First, decide how many consecutive logical-high states you want to detect.
-//! For example, if you poll the input pin every 5 ms and require 4
-//! consecutive logical-high states to trigger a debounced press event, that
-//! event will happen after 20 ms.
+//! First, decide how many consecutive states you want to detect.  For example,
+//! if you poll the input pin every 5 ms and require 4 consecutive logical-high
+//! states to trigger a debounced press event, that event will happen after 20 ms.
+//!
+//! On initialization, you also need to specify the initial state: `true` for
+//! logical-high, `false` for logical-low.
 //!
 //! ```rust
-//! use debouncr::{Debouncer, debounce_4};
-//! let mut debouncer = debounce_4(); // Type: Debouncer<u8, Repeat4>
+//! use debouncr::debounce_4;
+//!
+//! let mut debouncer = debounce_4(false); // Type: Debouncer<u8, Repeat4>
 //! ```
 //!
 //! ### Update
@@ -35,8 +38,9 @@
 //! internal state.
 //!
 //! ```rust
-//! # use debouncr::{Debouncer, debounce_3, Edge};
-//! let mut debouncer = debounce_3();
+//! use debouncr::{debounce_3, Edge};
+//!
+//! let mut debouncer = debounce_3(false);
 //! # fn poll_button() -> bool { true };
 //! assert_eq!(debouncer.update(poll_button()), None);
 //! assert_eq!(debouncer.update(poll_button()), None);
@@ -53,8 +57,9 @@
 //! recent updates were pressed, then the debounced state will be high.
 //!
 //! ```rust
-//! # use debouncr::{Debouncer, debounce_3};
-//! let mut debouncer = debounce_3();
+//! use debouncr::debounce_3;
+//!
+//! let mut debouncer = debounce_3(false);
 //!
 //! // Initially low
 //! assert!(debouncer.is_low());
@@ -76,14 +81,14 @@
 //! By default, the debouncer will report any change from "bouncing" to
 //! "stable high/low" as an edge. If instead you want to detect only
 //! changes from a stable state to the opposite stable state, use the
-//! stateful debouncer instead. It has slightly higher memory overhead
-//! than the regular debouncer, because it also stores the previous
+//! stateful debouncer instead. It has slightly higher (but still tiny) memory
+//! overhead than the regular debouncer, because it also stores the previous
 //! state in addition to the debouncing updates.
 //!
 //! ```rust
-//! use debouncr::{Edge, debounce_stateful_3};
+//! use debouncr::{debounce_stateful_3, Edge};
 //!
-//! let mut debouncer = debounce_stateful_3();
+//! let mut debouncer = debounce_stateful_3(false);
 //!
 //! // Ensure initial low state
 //! assert!(debouncer.is_low());
@@ -121,7 +126,7 @@
 //!         ctx.spawn.poll_button().unwrap();
 //!         init::LateResources {
 //!             button,
-//!             button_state: debounce_12(),
+//!             button_state: debounce_12(false),
 //!         }
 //!     }
 //!
@@ -168,7 +173,7 @@
 //!
 //! ## Memory Consumption
 //!
-//! Memory size of a single debouncer:
+//! Memory size of a debouncer instance:
 //!
 //! |Debouncer|Repetitions|Bytes|
 //! |--|--|--|
@@ -184,7 +189,7 @@
 
 use doc_comment::doc_comment;
 
-/// The main debouncer instance.
+/// A debouncer.
 ///
 /// It wraps a `u8` or `u16`, depending on the number of required consecutive
 /// logical-high states.
@@ -197,7 +202,7 @@ pub struct Debouncer<S, M> {
     mask: core::marker::PhantomData<M>,
 }
 
-/// The stateful debouncer instance.
+/// A stateful debouncer.
 ///
 /// The regular [`Debouncer`](struct.Debouncer.html) will report any change
 /// from "bouncing" to "stable high/low" as an edge. That means that if a
@@ -246,9 +251,9 @@ macro_rules! impl_logic {
                 $count,
                 " consecutive logical states.",
             ),
-            pub fn $name() -> Debouncer<$T, $M> {
+            pub fn $name(initial_state_pressed: bool) -> Debouncer<$T, $M> {
                 Debouncer {
-                    state: 0,
+                    state: if initial_state_pressed { $mask } else { 0 },
                     mask: core::marker::PhantomData,
                 }
             }
@@ -260,9 +265,9 @@ macro_rules! impl_logic {
                 $count,
                 " consecutive logical states.",
             ),
-            pub fn $name_stateful() -> DebouncerStateful<$T, $M> {
+            pub fn $name_stateful(initial_state_pressed: bool) -> DebouncerStateful<$T, $M> {
                 DebouncerStateful {
-                    debouncer: $name(),
+                    debouncer: $name(initial_state_pressed),
                     last_edge: Edge::Falling, // Initial state is low, therefore we assume an implicit falling edge
                 }
             }
@@ -353,7 +358,7 @@ mod tests {
     #[test]
     fn test_rising_edge() {
         // Initially not pressed
-        let mut debouncer: Debouncer<u8, Repeat3> = debounce_3();
+        let mut debouncer: Debouncer<u8, Repeat3> = debounce_3(false);
         assert!(debouncer.is_low());
 
         // Three pressed updates required
@@ -374,7 +379,7 @@ mod tests {
     #[test]
     fn test_falling_edge() {
         // Initially not pressed
-        let mut debouncer: Debouncer<u8, Repeat3> = debounce_3();
+        let mut debouncer: Debouncer<u8, Repeat3> = debounce_3(false);
         assert!(debouncer.is_low());
 
         // A single non-pressed update does not trigger
@@ -393,7 +398,7 @@ mod tests {
     #[test]
     fn test_debounce_16() {
         // Sixteen pressed updates required
-        let mut debouncer: Debouncer<u16, Repeat16> = debounce_16();
+        let mut debouncer: Debouncer<u16, Repeat16> = debounce_16(false);
         assert!(debouncer.is_low());
         for _ in 0..15 {
             assert_eq!(debouncer.update(true), None);
@@ -408,7 +413,7 @@ mod tests {
     #[test]
     fn test_is_low_high() {
         // Initially low
-        let mut debouncer: Debouncer<u8, Repeat8> = debounce_8();
+        let mut debouncer: Debouncer<u8, Repeat8> = debounce_8(false);
         assert!(debouncer.is_low());
         assert!(!debouncer.is_high());
 
@@ -439,13 +444,41 @@ mod tests {
     #[test]
     fn test_ram_consumption() {
         // Regular debouncers
-        assert_eq!(std::mem::size_of_val(&debounce_2()), 1);
-        assert_eq!(std::mem::size_of_val(&debounce_8()), 1);
-        assert_eq!(std::mem::size_of_val(&debounce_9()), 2);
-        assert_eq!(std::mem::size_of_val(&debounce_16()), 2);
+        assert_eq!(std::mem::size_of_val(&debounce_2(false)), 1);
+        assert_eq!(std::mem::size_of_val(&debounce_8(false)), 1);
+        assert_eq!(std::mem::size_of_val(&debounce_9(false)), 2);
+        assert_eq!(std::mem::size_of_val(&debounce_16(false)), 2);
 
         // Stateful debouncers
-        assert_eq!(std::mem::size_of_val(&debounce_stateful_8()), 2);
-        assert_eq!(std::mem::size_of_val(&debounce_stateful_9()), 4);
+        assert_eq!(std::mem::size_of_val(&debounce_stateful_8(false)), 2);
+        assert_eq!(std::mem::size_of_val(&debounce_stateful_9(false)), 4);
+    }
+
+    /// Ensure that the initial state can be specified.
+    #[test]
+    fn test_initial_state() {
+        let mut debouncer = debounce_2(false);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+
+        let mut debouncer = debounce_2(false);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+
+        let mut debouncer = debounce_2(true);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+
+        let mut debouncer = debounce_2(true);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
     }
 }
