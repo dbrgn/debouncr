@@ -1,10 +1,15 @@
 //! # Debouncr
 //!
 //! A simple and efficient `no_std` input debouncer that uses integer bit
-//! shifting to debounce inputs. The algorithm can detect rising and falling
-//! edges and only requires 1 byte of RAM for detecting up to 8 consecutive
-//! high/low states or 2 bytes of RAM for detecting up to 16 consecutive
-//! high/low states.
+//! shifting to debounce inputs. The basic algorithm can detect rising and
+//! falling edges and only requires 1 byte of RAM for detecting up to
+//! 8 consecutive high/low states or 2 bytes of RAM for detecting up to
+//! 16 consecutive high/low states.
+//!
+//! While the regular algorithm will detect any change from "bouncing"
+//! to "stable high/low" as an edge, there is also a variant that will
+//! only detect changes from "stable high" to "stable low" and
+//! vice versa as an edge (see section "Stateful Debouncing").
 //!
 //! The algorithm is based on the [Ganssle Guide to
 //! Debouncing](http://www.ganssle.com/debouncing-pt2.htm) (section "An
@@ -23,7 +28,7 @@
 //! use debouncr::{Debouncer, debounce_4};
 //! let mut debouncer = debounce_4(); // Type: Debouncer<u8, Repeat4>
 //! ```
-//! 
+//!
 //! ### Update
 //!
 //! In regular intervals, call the `update(pressed)` function to update the
@@ -41,7 +46,7 @@
 //! The `update` function will return a rising/falling edge, or `None` if the
 //! input is still bouncing.
 //!
-//! ### Query debounced state
+//! ### Query Debounced State
 //!
 //! You can also query the current debounced state. If none of the `n` recent
 //! updates were pressed, then the debounced state will be low. If all `n`
@@ -64,6 +69,35 @@
 //! debouncer.update(true);
 //! debouncer.update(true);
 //! assert!(debouncer.is_high());
+//! ```
+//!
+//! ### Stateful Debouncing
+//!
+//! By default, the debouncer will report any change from "bouncing" to
+//! "stable high/low" as an edge. If instead you want to detect only
+//! changes from a stable state to the opposite stable state, use the
+//! stateful debouncer instead. It has slightly higher memory overhead
+//! than the regular debouncer, because it also stores the previous
+//! state in addition to the debouncing updates.
+//!
+//! ```rust
+//! use debouncr::{Edge, debounce_stateful_3};
+//!
+//! let mut debouncer = debounce_stateful_3();
+//!
+//! // Ensure initial low state
+//! assert!(debouncer.is_low());
+//!
+//! // Temporary bouncing states will not trigger an edge
+//! assert_eq!(debouncer.update(true), None);
+//! assert_eq!(debouncer.update(false), None);
+//! assert_eq!(debouncer.update(false), None);
+//! assert_eq!(debouncer.update(false), None);
+//!
+//! // However, stable opposite states will trigger an edge
+//! assert_eq!(debouncer.update(true), None);
+//! assert_eq!(debouncer.update(true), None);
+//! assert_eq!(debouncer.update(true), Some(Edge::Rising));
 //! ```
 //!
 //! ## Example: RTIC
@@ -149,8 +183,25 @@ pub struct Debouncer<S, M> {
     mask: core::marker::PhantomData<M>,
 }
 
+/// The stateful debouncer instance.
+///
+/// The regular [`Debouncer`](struct.Debouncer.html) will report any change
+/// from "bouncing" to "stable high/low" as an edge. That means that if a
+/// button is not pressed, bounces twice and then goes back to unpressed, it
+/// will report a falling edge even though there was no rising edge.
+///
+/// This `DebouncerStateful` on the other hand stores the previous stable state
+/// and will only report a falling edge if there was previously a rising edge
+/// (and vice versa).
+///
+/// The memory cost for this is storing an extra enum value per debouncer.
+pub struct DebouncerStateful<S, M> {
+    debouncer: Debouncer<S, M>,
+    last_edge: Edge,
+}
+
 /// Rising or falling edge.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Edge {
     /// A rising edge
     Rising,
@@ -159,7 +210,7 @@ pub enum Edge {
 }
 
 macro_rules! impl_logic {
-    ($T:ty, $count:expr, $M:ident, $name:ident, $mask:expr) => {
+    ($T:ty, $count:expr, $M:ident, $name:ident, $name_stateful:ident, $mask:expr) => {
         doc_comment! {
             concat!(
                 "Detect ",
@@ -177,14 +228,28 @@ macro_rules! impl_logic {
 
         doc_comment! {
             concat!(
-                "Create a new debouncer that can detect a rising edge of ",
+                "Create a new debouncer that can detect a rising or falling edge of ",
                 $count,
-                " consecutive logical-high states.",
+                " consecutive logical states.",
             ),
             pub fn $name() -> Debouncer<$T, $M> {
                 Debouncer {
                     state: 0,
                     mask: core::marker::PhantomData,
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!(
+                "Create a new stateful debouncer that can detect stable state changes after ",
+                $count,
+                " consecutive logical states.",
+            ),
+            pub fn $name_stateful() -> DebouncerStateful<$T, $M> {
+                DebouncerStateful {
+                    debouncer: $name(),
+                    last_edge: Edge::Falling, // Initial state is low, therefore we assume an implicit falling edge
                 }
             }
         }
@@ -224,24 +289,48 @@ macro_rules! impl_logic {
                 self.state == 0
             }
         }
+
+        impl DebouncerStateful<$T, $M> {
+            /// Update the state.
+            pub fn update(&mut self, pressed: bool) -> Option<Edge> {
+                self.debouncer.update(pressed).and_then(|edge| {
+                    if edge != self.last_edge {
+                        self.last_edge = edge;
+                        Some(edge)
+                    } else {
+                        None
+                    }
+                })
+            }
+
+            /// Return `true` if the debounced state is logical high.
+            pub fn is_high(&self) -> bool {
+                self.debouncer.is_high()
+            }
+
+            /// Return `true` if the debounced state is logical low.
+            pub fn is_low(&self) -> bool {
+                self.debouncer.is_low()
+            }
+        }
     };
 }
 
-impl_logic!( u8,  2,  Repeat2,  debounce_2,           0b0000_0011);
-impl_logic!( u8,  3,  Repeat3,  debounce_3,           0b0000_0111);
-impl_logic!( u8,  4,  Repeat4,  debounce_4,           0b0000_1111);
-impl_logic!( u8,  5,  Repeat5,  debounce_5,           0b0001_1111);
-impl_logic!( u8,  6,  Repeat6,  debounce_6,           0b0011_1111);
-impl_logic!( u8,  7,  Repeat7,  debounce_7,           0b0111_1111);
-impl_logic!( u8,  8,  Repeat8,  debounce_8,           0b1111_1111);
-impl_logic!(u16,  9,  Repeat9,  debounce_9, 0b0000_0001_1111_1111);
-impl_logic!(u16, 10, Repeat10, debounce_10, 0b0000_0011_1111_1111);
-impl_logic!(u16, 11, Repeat11, debounce_11, 0b0000_0111_1111_1111);
-impl_logic!(u16, 12, Repeat12, debounce_12, 0b0000_1111_1111_1111);
-impl_logic!(u16, 13, Repeat13, debounce_13, 0b0001_1111_1111_1111);
-impl_logic!(u16, 14, Repeat14, debounce_14, 0b0011_1111_1111_1111);
-impl_logic!(u16, 15, Repeat15, debounce_15, 0b0111_1111_1111_1111);
-impl_logic!(u16, 16, Repeat16, debounce_16, 0b1111_1111_1111_1111);
+impl_logic!(u8,  2,  Repeat2,  debounce_2,  debounce_stateful_2,  0b0000_0011);
+impl_logic!(u8,  3,  Repeat3,  debounce_3,  debounce_stateful_3,  0b0000_0111);
+impl_logic!(u8,  4,  Repeat4,  debounce_4,  debounce_stateful_4,  0b0000_1111);
+impl_logic!(u8,  5,  Repeat5,  debounce_5,  debounce_stateful_5,  0b0001_1111);
+impl_logic!(u8,  6,  Repeat6,  debounce_6,  debounce_stateful_6,  0b0011_1111);
+impl_logic!(u8,  7,  Repeat7,  debounce_7,  debounce_stateful_7,  0b0111_1111);
+impl_logic!(u8,  8,  Repeat8,  debounce_8,  debounce_stateful_8,  0b1111_1111);
+impl_logic!(u16, 9,  Repeat9,  debounce_9,  debounce_stateful_9,  0b0000_0001_1111_1111);
+impl_logic!(u16, 10, Repeat10, debounce_10, debounce_stateful_10, 0b0000_0011_1111_1111);
+impl_logic!(u16, 11, Repeat11, debounce_11, debounce_stateful_11, 0b0000_0111_1111_1111);
+impl_logic!(u16, 12, Repeat12, debounce_12, debounce_stateful_12, 0b0000_1111_1111_1111);
+impl_logic!(u16, 13, Repeat13, debounce_13, debounce_stateful_13, 0b0001_1111_1111_1111);
+impl_logic!(u16, 14, Repeat14, debounce_14, debounce_stateful_14, 0b0011_1111_1111_1111);
+impl_logic!(u16, 15, Repeat15, debounce_15, debounce_stateful_15, 0b0111_1111_1111_1111);
+impl_logic!(u16, 16, Repeat16, debounce_16, debounce_stateful_16, 0b1111_1111_1111_1111);
 
 #[cfg(test)]
 mod tests {
