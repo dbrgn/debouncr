@@ -117,7 +117,7 @@
 //! const APP: () = {
 //!     struct Resources {
 //!         button: gpioa::PA11<Input<PullUp>>,
-//!         button_state: Debounce<u16, Repeat12>,
+//!         button_state: Debouncer<u16, Repeat12>,
 //!     }
 //!
 //!     #[init(spawn = [poll_button])]
