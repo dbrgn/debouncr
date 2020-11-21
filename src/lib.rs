@@ -268,7 +268,7 @@ macro_rules! impl_logic {
             pub fn $name_stateful(initial_state_pressed: bool) -> DebouncerStateful<$T, $M> {
                 DebouncerStateful {
                     debouncer: $name(initial_state_pressed),
-                    last_edge: Edge::Falling, // Initial state is low, therefore we assume an implicit falling edge
+                    last_edge: if initial_state_pressed {Edge::Rising} else {Edge::Falling},
                 }
             }
         }
@@ -480,5 +480,31 @@ mod tests {
         assert_eq!(debouncer.update(true), None);
         assert_eq!(debouncer.update(false), None);
         assert_eq!(debouncer.update(false), Some(Edge::Falling));
+
+        // Stateful debouncers
+        let mut debouncer = debounce_stateful_2(false);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+
+        let mut debouncer = debounce_stateful_2(false);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+
+        let mut debouncer = debounce_stateful_2(true);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), Some(Edge::Rising));
+
+        let mut debouncer = debounce_stateful_2(true);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(true), None);
+        assert_eq!(debouncer.update(false), None);
+        assert_eq!(debouncer.update(false), Some(Edge::Falling));
+
     }
 }
